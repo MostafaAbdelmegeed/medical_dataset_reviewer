@@ -86,12 +86,12 @@ class MainWindow(QtWidgets.QMainWindow):
         next_btn.clicked.connect(self.controller.next_pair)
         nav.addWidget(next_btn)
 
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Left), self).activated.connect(
-            self.controller.prev_pair
-        )
-        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Right), self).activated.connect(
-            self.controller.next_pair
-        )
+        QtGui.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_Left), self
+        ).activated.connect(self._dec_slice)
+        QtGui.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_Right), self
+        ).activated.connect(self._inc_slice)
 
         discard_btn = QtWidgets.QPushButton("Discard")
         discard_btn.setStyleSheet("background-color: red; color: white;")
@@ -156,6 +156,16 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.left_view.set_image((vol_slice * 255).astype("uint8"))
         self.right_view.set_image((seg_slice * 255).astype("uint8"))
+
+    def _dec_slice(self) -> None:
+        if not self.slice_slider.isEnabled():
+            return
+        self.slice_slider.setValue(max(self.slice_slider.minimum(), self.slice_slider.value() - 1))
+
+    def _inc_slice(self) -> None:
+        if not self.slice_slider.isEnabled():
+            return
+        self.slice_slider.setValue(min(self.slice_slider.maximum(), self.slice_slider.value() + 1))
 
     # Actions -------------------------------------------------
     def discard(self) -> None:
