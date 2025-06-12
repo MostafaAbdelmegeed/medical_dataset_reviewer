@@ -128,13 +128,14 @@ class Controller(QtCore.QObject):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(src), str(dest))
 
+        # Log the exact file that was copied so the filename is preserved
         with open("discard_log.csv", "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(
                 [
                     datetime.now().isoformat(),
                     str(pair.original),
-                    str(pair.segmentation),
+                    str(src),
                     comment,
                 ]
             )

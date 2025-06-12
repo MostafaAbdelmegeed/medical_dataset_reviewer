@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from seg_qc_tool.controller import Controller, CONFIG_PATH
 
 
@@ -21,12 +22,20 @@ def test_discard_current(tmp_path: Path) -> None:
     c.set_discard_dir(discard)
 
     assert len(c.pairs) == 1
-    c.discard_current("bad")
+    old = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        c.discard_current("bad")
+    finally:
+        os.chdir(old)
     # segmentation copied
     assert (seg / "v_seg.npy").exists()
     assert (discard / "v_seg.npy").exists()
     # pair still present
     assert c.current_index == 0
+    # log contains full segmentation path
+    log = (tmp_path / "discard_log.csv").read_text().strip()
+    assert "v_seg.npy" in log
 
 
 def test_discard_current_dicom_slice(tmp_path: Path) -> None:
@@ -56,10 +65,39 @@ def test_discard_current_dicom_slice(tmp_path: Path) -> None:
     assert len(c.pairs) == 1
 
     c.set_slice_index(1)
-    c.discard_current("bad slice")
+    old = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        c.discard_current("bad slice")
+    finally:
+        os.chdir(old)
 
     # both segmentation files remain
     assert (seg_series / "a.dcm").exists()
     assert (seg_series / "b.dcm").exists()
     # copied second slice
     assert (discard / "p1_seg" / "b.dcm").exists()
+    log = (tmp_path / "discard_log.csv").read_text().strip().splitlines()[-1]
+    assert "b.dcm" in log
+
+
+def test_navigation(tmp_path: Path) -> None:
+    orig = tmp_path / "orig"
+    seg = tmp_path / "seg"
+    orig.mkdir()
+    seg.mkdir()
+
+    (orig / "a.npy").write_text("o1")
+    (orig / "b.npy").write_text("o2")
+    (seg / "a_seg.npy").write_text("s1")
+    (seg / "b_seg.npy").write_text("s2")
+
+    c = Controller()
+    c.set_segmentations_dir(seg)
+    c.set_originals_dir(orig)
+    assert len(c.pairs) == 2
+    assert c.current_index == 0
+    c.next_pair()
+    assert c.current_index == 1
+    c.prev_pair()
+    assert c.current_index == 0
