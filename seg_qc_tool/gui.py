@@ -33,6 +33,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.controller = controller
         self.controller.pair_changed.connect(self.load_pair)
 
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu("File")
+        orig_act = QtGui.QAction("Open Originals Folder…", self)
+        orig_act.triggered.connect(self.choose_originals)
+        file_menu.addAction(orig_act)
+        seg_act = QtGui.QAction("Open Segmentations Folder…", self)
+        seg_act.triggered.connect(self.choose_segmentations)
+        file_menu.addAction(seg_act)
+        discard_act = QtGui.QAction("Set Discard Folder…", self)
+        discard_act.triggered.connect(self.choose_discard)
+        file_menu.addAction(discard_act)
+
         self.left_view = ImageView()
         self.right_view = ImageView()
 
@@ -91,3 +103,25 @@ class MainWindow(QtWidgets.QMainWindow):
             func = load_dicom_series
         future: Future = self.controller.executor.submit(func, path)
         return future.result()
+
+    # Folder selection ---------------------------------------
+    def choose_originals(self) -> None:
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Originals Folder"
+        )
+        if directory:
+            self.controller.set_originals_dir(Path(directory))
+
+    def choose_segmentations(self) -> None:
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Segmentations Folder"
+        )
+        if directory:
+            self.controller.set_segmentations_dir(Path(directory))
+
+    def choose_discard(self) -> None:
+        directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Discard Folder"
+        )
+        if directory:
+            self.controller.set_discard_dir(Path(directory))

@@ -14,6 +14,9 @@ python -m seg_qc_tool
 
 ![demo](resources/demo.gif)
 
+Use the **File** menu to select your originals, segmentations, and discard
+folders.
+
 ## Design decisions
 
 - **PySide6** provides a permissive Qt binding for GUI widgets.

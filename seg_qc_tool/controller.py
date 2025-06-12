@@ -54,6 +54,23 @@ class Controller(QtCore.QObject):
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(self.settings.__dict__, default=str))
 
+    def set_originals_dir(self, directory: Path) -> None:
+        """Update originals directory and reload pairs."""
+        self.settings.originals_dir = directory
+        self.save_settings()
+        self.load_pairs()
+
+    def set_segmentations_dir(self, directory: Path) -> None:
+        """Update segmentations directory and reload pairs."""
+        self.settings.segmentations_dir = directory
+        self.save_settings()
+        self.load_pairs()
+
+    def set_discard_dir(self, directory: Path) -> None:
+        """Set discard directory."""
+        self.settings.discard_dir = directory
+        self.save_settings()
+
     # Pairing --------------------------------------------------
     def load_pairs(self) -> None:
         if not self.settings.originals_dir or not self.settings.segmentations_dir:
