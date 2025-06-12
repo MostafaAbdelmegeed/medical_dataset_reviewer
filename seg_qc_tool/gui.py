@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui, QtWidgets
 from concurrent.futures import Future
 
-from .io_utils import load_nifti, load_npy, load_dicom_series
+from .io_utils import load_volume, normalize_volume
 
 from .controller import Controller
 from .models import Pair
@@ -95,14 +95,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.right_view.set_image((seg[val] * 255).astype('uint8'))
 
     def _load_volume(self, path: Path):
-        if path.suffix in {'.nii', '.gz', '.nii.gz'}:
-            func = load_nifti
-        elif path.suffix == '.npy':
-            func = load_npy
-        else:
-            func = load_dicom_series
-        future: Future = self.controller.executor.submit(func, path)
-        return future.result()
+        future: Future = self.controller.executor.submit(load_volume, path)
+        volume = future.result()
+        norm, _, _ = normalize_volume(volume)
+        return norm
 
     # Folder selection ---------------------------------------
     def choose_originals(self) -> None:

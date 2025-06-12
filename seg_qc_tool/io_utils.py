@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
+from functools import lru_cache
 
 import numpy as np
 import nibabel as nib
@@ -32,20 +33,16 @@ def load_npy(path: Path) -> np.ndarray:
 
 
 def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
-    """Load a DICOM series from a file or directory."""
+    """Load a DICOM series from a file or directory.
+
+    Sorting is based on the ``InstanceNumber`` attribute when available to
+    preserve slice order. ``RescaleSlope`` and ``RescaleIntercept`` are applied
+    and MONOCHROME1 images are inverted to maintain correct intensity mapping.
+    """
     directory = path if path.is_dir() else path.parent
 
-    if sitk is not None:
-        try:
-            reader = sitk.ImageSeriesReader()
-            series_ids = reader.GetGDCMSeriesIDs(str(directory))
-            if series_ids:
-                reader.SetFileNames(reader.GetGDCMSeriesFileNames(str(directory)))
-                img = reader.Execute()
-                array = sitk.GetArrayFromImage(img).astype(np.float32)
-                return array
-        except Exception:  # pragma: no cover - optional deps
-            logger.exception("SimpleITK failed, falling back to pydicom")
+    # Use pydicom directly to keep raw intensities. SimpleITK sometimes applies
+    # windowing automatically which can invert the data.
 
     if pydicom is None:
         raise ImportError("pydicom or SimpleITK required for DICOM loading")
@@ -56,8 +53,34 @@ def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
     if not files:
         raise FileNotFoundError("No DICOM files found")
 
-    slices = [pydicom.dcmread(str(f)).pixel_array for f in files]
-    return np.stack(slices).astype(np.float32)
+    datasets: List[pydicom.Dataset] = [pydicom.dcmread(str(f)) for f in files]
+    try:
+        datasets.sort(key=lambda d: int(getattr(d, "InstanceNumber", 0)))
+    except Exception:  # pragma: no cover - best effort sorting
+        pass
+
+    arrays = []
+    for ds in datasets:
+        arr = ds.pixel_array.astype(np.float32)
+        slope = float(getattr(ds, "RescaleSlope", 1.0))
+        intercept = float(getattr(ds, "RescaleIntercept", 0.0))
+        arr = arr * slope + intercept
+        arrays.append(arr)
+
+    volume = np.stack(arrays)
+    if datasets and datasets[0].get("PhotometricInterpretation") == "MONOCHROME1":
+        volume = volume.max() - volume
+    return volume
+
+
+@lru_cache(maxsize=2)
+def load_volume(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
+    """Load a volume from a supported file path with simple caching."""
+    if path.suffix in {".nii", ".nii.gz", ".gz"}:
+        return load_nifti(path)
+    if path.suffix == ".npy":
+        return load_npy(path)
+    return load_dicom_series(path)
 
 
 def normalize_volume(volume: np.ndarray) -> Tuple[np.ndarray, float, float]:

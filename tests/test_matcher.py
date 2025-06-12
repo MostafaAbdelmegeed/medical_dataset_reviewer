@@ -31,7 +31,7 @@ def test_pair_finder_dicom_dir(tmp_path: Path) -> None:
     seg_root.mkdir()
     series = orig_root / "patient1"
     series.mkdir()
-    _write_dcm(series / "0.dcm", 0)
+    _write_dcm(series / "0.dcm", 0, instance=1)
     (seg_root / "patient1_seg.nii").write_text("s")
     pairs = pair_finder(orig_root, seg_root)
     assert pairs and pairs[0].original == series
