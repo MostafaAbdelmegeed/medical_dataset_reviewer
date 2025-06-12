@@ -145,11 +145,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def done(f: Future) -> None:
             setattr(self, attr, f.result())
-            QtCore.QMetaObject.invokeMethod(
-                self,
-                callback,
-                QtCore.Qt.ConnectionType.QueuedConnection,
-            )
+            # Ensure callback runs in the main thread
+            QtCore.QTimer.singleShot(0, callback)
 
         future.add_done_callback(done)
 
