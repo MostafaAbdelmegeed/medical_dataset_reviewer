@@ -24,11 +24,12 @@ class ImageView(QtWidgets.QLabel):
 
     def set_image(self, array) -> None:
         """Set and scale an image from a numpy array."""
+        array = np.ascontiguousarray(array, dtype=np.uint8)
         h, w = array.shape
         img = QtGui.QImage(
-            array.tobytes(), w, h, QtGui.QImage.Format.Format_Grayscale8
+            array.data, w, h, array.strides[0], QtGui.QImage.Format.Format_Grayscale8
         )
-        self._pixmap = QtGui.QPixmap.fromImage(img)
+        self._pixmap = QtGui.QPixmap.fromImage(img.copy())
         self._update_pixmap()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # pragma: no cover - GUI
