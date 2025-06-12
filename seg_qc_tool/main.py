@@ -6,8 +6,9 @@ import sys
 
 from PySide6 import QtWidgets
 
-from .controller import Controller
-from .gui import MainWindow
+# Use absolute imports so running this file directly works too
+from seg_qc_tool.controller import Controller
+from seg_qc_tool.gui import MainWindow
 
 
 def main() -> None:
