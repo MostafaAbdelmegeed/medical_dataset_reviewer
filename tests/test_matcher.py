@@ -1,6 +1,7 @@
 from pathlib import Path
 from seg_qc_tool.matcher import pair_finder
 from seg_qc_tool.models import Pair
+from tests.test_io_utils import _write_dcm
 
 
 def test_pair_finder(tmp_path: Path) -> None:
@@ -21,3 +22,16 @@ def test_strip_suffix():
     assert _strip_suffix('file_mask') == 'file'
     assert _strip_suffix('file_label') == 'file'
     assert _strip_suffix('file') == 'file'
+
+
+def test_pair_finder_dicom_dir(tmp_path: Path) -> None:
+    orig_root = tmp_path / "orig"
+    seg_root = tmp_path / "seg"
+    orig_root.mkdir()
+    seg_root.mkdir()
+    series = orig_root / "patient1"
+    series.mkdir()
+    _write_dcm(series / "0.dcm", 0)
+    (seg_root / "patient1_seg.nii").write_text("s")
+    pairs = pair_finder(orig_root, seg_root)
+    assert pairs and pairs[0].original == series

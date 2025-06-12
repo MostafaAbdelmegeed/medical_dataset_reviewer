@@ -31,22 +31,31 @@ def load_npy(path: Path) -> np.ndarray:
     return np.load(str(path))
 
 
-def load_dicom_series(directory: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
-    """Load a DICOM series using pydicom or SimpleITK."""
+def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
+    """Load a DICOM series from a file or directory."""
+    directory = path if path.is_dir() else path.parent
+
     if sitk is not None:
-        reader = sitk.ImageSeriesReader()
-        series_IDs = reader.GetGDCMSeriesIDs(str(directory))
-        if not series_IDs:
-            raise FileNotFoundError("No DICOM series found")
-        reader.SetFileNames(reader.GetGDCMSeriesFileNames(str(directory)))
-        img = reader.Execute()
-        array = sitk.GetArrayFromImage(img).astype(np.float32)
-        return array
+        try:
+            reader = sitk.ImageSeriesReader()
+            series_ids = reader.GetGDCMSeriesIDs(str(directory))
+            if series_ids:
+                reader.SetFileNames(reader.GetGDCMSeriesFileNames(str(directory)))
+                img = reader.Execute()
+                array = sitk.GetArrayFromImage(img).astype(np.float32)
+                return array
+        except Exception:  # pragma: no cover - optional deps
+            logger.exception("SimpleITK failed, falling back to pydicom")
+
     if pydicom is None:
         raise ImportError("pydicom or SimpleITK required for DICOM loading")
+
     files = sorted(directory.glob("*.dcm"))
     if not files:
+        files = sorted(directory.glob("*.DCM"))
+    if not files:
         raise FileNotFoundError("No DICOM files found")
+
     slices = [pydicom.dcmread(str(f)).pixel_array for f in files]
     return np.stack(slices).astype(np.float32)
 

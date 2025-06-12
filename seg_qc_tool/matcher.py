@@ -28,10 +28,23 @@ def _strip_suffix(name: str) -> str:
     return name
 
 
+def _volume_items(directory: Path) -> List[Path]:
+    """Return volume paths in a directory.
+
+    If the directory itself contains DICOM files, treat it as one volume.
+    Otherwise return all immediate children.
+    """
+    entries = list(directory.iterdir())
+    has_dcm = any(e.is_file() and e.suffix.lower() == ".dcm" for e in entries)
+    if has_dcm:
+        return [directory]
+    return entries
+
+
 def pair_finder(original_dir: Path, seg_dir: Path, max_dist: int = 2) -> List[Pair]:
     """Pair files in two directories using fuzzy matching."""
-    originals = list(original_dir.glob("*"))
-    segs = list(seg_dir.glob("*"))
+    originals = _volume_items(original_dir)
+    segs = _volume_items(seg_dir)
     pairs = []
     used_segs = set()
     for orig in originals:
