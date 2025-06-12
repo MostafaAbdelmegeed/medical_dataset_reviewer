@@ -73,15 +73,22 @@ class MainWindow(QtWidgets.QMainWindow):
         nav = QtWidgets.QToolBar()
         self.addToolBar(QtCore.Qt.ToolBarArea.BottomToolBarArea, nav)
 
-        prev_act = QtGui.QAction("Prev", self)
-        prev_act.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Left))
-        prev_act.triggered.connect(self.controller.prev_pair)
-        nav.addAction(prev_act)
+        prev_btn = QtWidgets.QToolButton()
+        prev_btn.setText("Prev")
+        prev_btn.clicked.connect(self.controller.prev_pair)
+        nav.addWidget(prev_btn)
 
-        next_act = QtGui.QAction("Next", self)
-        next_act.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Right))
-        next_act.triggered.connect(self.controller.next_pair)
-        nav.addAction(next_act)
+        next_btn = QtWidgets.QToolButton()
+        next_btn.setText("Next")
+        next_btn.clicked.connect(self.controller.next_pair)
+        nav.addWidget(next_btn)
+
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Left), self).activated.connect(
+            self.controller.prev_pair
+        )
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Right), self).activated.connect(
+            self.controller.next_pair
+        )
 
         discard_btn = QtWidgets.QPushButton("Discard")
         discard_btn.setStyleSheet("background-color: red; color: white;")

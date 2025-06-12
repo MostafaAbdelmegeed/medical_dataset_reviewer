@@ -93,14 +93,37 @@ class Controller(QtCore.QObject):
 
     # Discard --------------------------------------------------
     def discard_current(self, comment: str = "") -> None:
+        """Move the current segmentation to the discard folder and log it."""
         if self.current_index == -1 or not self.settings.discard_dir:
             return
-        pair = self.pairs[self.current_index]
-        rel = pair.segmentation.relative_to(self.settings.segmentations_dir)
+
+        pair = self.pairs.pop(self.current_index)
+        try:
+            rel = pair.segmentation.relative_to(self.settings.segmentations_dir)
+        except ValueError:
+            rel = pair.segmentation.name
         target = self.settings.discard_dir / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        pair.segmentation.rename(target)
+
+        # Use shutil.move to cope with cross-device moves
+        import shutil
+
+        shutil.move(str(pair.segmentation), str(target))
+
         with open("discard_log.csv", "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([datetime.now().isoformat(), str(pair.original), str(pair.segmentation), comment])
-        self.next_pair()
+            writer.writerow(
+                [
+                    datetime.now().isoformat(),
+                    str(pair.original),
+                    str(pair.segmentation),
+                    comment,
+                ]
+            )
+
+        if self.pairs:
+            if self.current_index >= len(self.pairs):
+                self.current_index = len(self.pairs) - 1
+            self.pair_changed.emit(self.pairs[self.current_index])
+        else:
+            self.current_index = -1

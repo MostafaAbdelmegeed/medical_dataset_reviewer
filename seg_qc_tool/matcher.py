@@ -29,16 +29,25 @@ def _strip_suffix(name: str) -> str:
 
 
 def _volume_items(directory: Path) -> List[Path]:
-    """Return volume paths in a directory.
+    """Return all volume paths inside ``directory`` recursively.
 
-    If the directory itself contains DICOM files, treat it as one volume.
-    Otherwise return all immediate children.
+    A folder containing ``.dcm`` files is treated as a single volume and its
+    sub-directories are not searched further. Supported file formats for single
+    volumes include NIfTI and ``.npy`` files.
     """
+
+    # If this directory itself holds DICOM slices, treat it as one volume
     entries = list(directory.iterdir())
-    has_dcm = any(e.is_file() and e.suffix.lower() == ".dcm" for e in entries)
-    if has_dcm:
+    if any(e.is_file() and e.suffix.lower() == ".dcm" for e in entries):
         return [directory]
-    return entries
+
+    items: List[Path] = []
+    for child in entries:
+        if child.is_dir():
+            items.extend(_volume_items(child))
+        elif child.suffix.lower() in {".nii", ".nii.gz", ".npy"}:
+            items.append(child)
+    return items
 
 
 def pair_finder(original_dir: Path, seg_dir: Path, max_dist: int = 2) -> List[Pair]:

@@ -35,3 +35,16 @@ def test_pair_finder_dicom_dir(tmp_path: Path) -> None:
     (seg_root / "patient1_seg.nii").write_text("s")
     pairs = pair_finder(orig_root, seg_root)
     assert pairs and pairs[0].original == series
+
+
+def test_pair_finder_recursive(tmp_path: Path) -> None:
+    orig_root = tmp_path / "orig"
+    seg_root = tmp_path / "seg"
+    orig_root.mkdir()
+    seg_root.mkdir()
+    (orig_root / "nested").mkdir()
+    (seg_root / "nested").mkdir()
+    (orig_root / "nested" / "vol.nii").write_text("v")
+    (seg_root / "nested" / "vol_seg.nii").write_text("s")
+    pairs = pair_finder(orig_root, seg_root)
+    assert pairs and pairs[0].original.name == "vol.nii"
