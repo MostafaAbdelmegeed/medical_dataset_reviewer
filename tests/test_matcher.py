@@ -48,3 +48,19 @@ def test_pair_finder_recursive(tmp_path: Path) -> None:
     (seg_root / "nested" / "vol_seg.nii").write_text("s")
     pairs = pair_finder(orig_root, seg_root)
     assert pairs and pairs[0].original.name == "vol.nii"
+
+
+def test_pair_finder_single_volume(tmp_path: Path) -> None:
+    orig_root = tmp_path / "orig"
+    seg_root = tmp_path / "seg"
+    orig_root.mkdir()
+    seg_root.mkdir()
+    (orig_root / "series").mkdir()
+    (seg_root / "mask").mkdir()
+    from tests.test_io_utils import _write_dcm
+
+    _write_dcm(orig_root / "series" / "0.dcm", 0, instance=1)
+    _write_dcm(seg_root / "mask" / "0.dcm", 1, instance=1)
+
+    pairs = pair_finder(orig_root, seg_root)
+    assert len(pairs) == 1

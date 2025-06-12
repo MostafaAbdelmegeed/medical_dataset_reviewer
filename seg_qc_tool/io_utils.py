@@ -61,6 +61,7 @@ def load_dicom_series(path: Path, *, return_files: bool = False) -> Union[np.nda
     files = sorted(directory.glob("*.dcm"))
     if not files:
         files = sorted(directory.glob("*.DCM"))
+    logger.debug("load_dicom_series scanning %s -> %d files", directory, len(files))
     if not files:
         raise FileNotFoundError("No DICOM files found")
 
