@@ -135,7 +135,7 @@ class Controller(QtCore.QObject):
                 [
                     datetime.now().isoformat(),
                     str(pair.original),
-                    str(src),
+                    Path(src).name,
                     comment,
                 ]
             )

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import csv
 from seg_qc_tool.controller import Controller, CONFIG_PATH
 
 
@@ -34,8 +35,9 @@ def test_discard_current(tmp_path: Path) -> None:
     # pair still present
     assert c.current_index == 0
     # log contains full segmentation path
-    log = (tmp_path / "discard_log.csv").read_text().strip()
-    assert "v_seg.npy" in log
+    row = next(csv.reader((tmp_path / "discard_log.csv").read_text().splitlines()))
+    assert row[1].endswith("v.npy")
+    assert row[2] == "v_seg.npy"
 
 
 def test_discard_current_dicom_slice(tmp_path: Path) -> None:
@@ -77,8 +79,9 @@ def test_discard_current_dicom_slice(tmp_path: Path) -> None:
     assert (seg_series / "b.dcm").exists()
     # copied second slice
     assert (discard / "p1_seg" / "b.dcm").exists()
-    log = (tmp_path / "discard_log.csv").read_text().strip().splitlines()[-1]
-    assert "b.dcm" in log
+    row = list(csv.reader((tmp_path / "discard_log.csv").read_text().splitlines()))[-1]
+    assert row[1].endswith("p1")
+    assert row[2] == "b.dcm"
 
 
 def test_navigation(tmp_path: Path) -> None:
