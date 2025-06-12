@@ -1,0 +1,7 @@
+PySide6
+nibabel
+pydicom
+SimpleITK
+numpy
+scikit-image
+python-Levenshtein
