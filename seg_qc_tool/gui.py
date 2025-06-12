@@ -68,7 +68,16 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter()
         splitter.addWidget(self.left_view)
         splitter.addWidget(self.right_view)
-        self.setCentralWidget(splitter)
+
+        self.dataset_label = QtWidgets.QLabel("")
+        self.dataset_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(container)
+        layout.addWidget(self.dataset_label)
+        layout.addWidget(splitter)
+        layout.setStretchFactor(splitter, 1)
+        self.setCentralWidget(container)
 
         nav = QtWidgets.QToolBar()
         self.addToolBar(QtCore.Qt.ToolBarArea.BottomToolBarArea, nav)
@@ -103,6 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slice_slider.valueChanged.connect(self.change_slice)
 
     def load_pair(self, pair: Pair) -> None:
+        self.dataset_label.setText(pair.original.name)
         volume = self._load_volume(pair.original)
         seg = self._load_volume(pair.segmentation)
         if volume.ndim == 3:
