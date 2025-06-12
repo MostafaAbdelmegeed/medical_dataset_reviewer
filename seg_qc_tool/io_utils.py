@@ -71,15 +71,14 @@ def load_dicom_series(path: Path, *, return_files: bool = False) -> Union[np.nda
 
     slices = []
     for f in files:
-        ds = pydicom.dcmread(str(f))
-        inst_num = int(getattr(ds, "InstanceNumber", 0))
-        arr = ds.pixel_array.astype(np.float32)
-        slope = float(getattr(ds, "RescaleSlope", 1.0))
-        intercept = float(getattr(ds, "RescaleIntercept", 0.0))
-        arr = arr * slope + intercept
-        photometric = getattr(ds, "PhotometricInterpretation", "")
-        if hasattr(ds, "close"):
-            ds.close()
+        with open(f, "rb") as fp:
+            ds = pydicom.dcmread(fp)
+            inst_num = int(getattr(ds, "InstanceNumber", 0))
+            arr = ds.pixel_array.astype(np.float32)
+            slope = float(getattr(ds, "RescaleSlope", 1.0))
+            intercept = float(getattr(ds, "RescaleIntercept", 0.0))
+            arr = arr * slope + intercept
+            photometric = getattr(ds, "PhotometricInterpretation", "")
         slices.append((inst_num, arr, photometric, f))
 
     slices.sort(key=lambda t: t[0])
