@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def load_nifti(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
     """Load a NIfTI file as a numpy array and close the file handle."""
-    img = nib.load(str(path))
+    img = nib.load(str(path), mmap=False)
     data = img.get_fdata(dtype=np.float32)
     if data.ndim == 4:
         data = data[..., 0]
