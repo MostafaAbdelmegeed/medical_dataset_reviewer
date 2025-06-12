@@ -110,6 +110,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.slice_slider.setMinimum(0)
             self.slice_slider.setMaximum(volume.shape[0] - 1)
             self.slice_slider.setValue(mid)
+            self.controller.set_slice_index(mid)
             slice_ = volume[mid]
         else:
             slice_ = volume
@@ -126,6 +127,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pair = self.controller.pairs[self.controller.current_index]
         volume = self._load_volume(pair.original)
         seg = self._load_volume(pair.segmentation)
+        self.controller.set_slice_index(val)
         self.left_view.set_image((volume[val] * 255).astype('uint8'))
         self.right_view.set_image((seg[val] * 255).astype('uint8'))
 

@@ -46,6 +46,9 @@ def test_load_dicom_series_from_file(tmp_path: Path) -> None:
     _write_dcm(series / "1.dcm", 1, instance=2)
     volume = load_dicom_series(series / "0.dcm")
     assert volume.shape[0] == 2
+    volume2, files = load_dicom_series(series, return_files=True)
+    assert len(files) == 2
+    assert volume2.shape == volume.shape
 
 
 def test_load_dicom_series_monochrome1(tmp_path: Path) -> None:

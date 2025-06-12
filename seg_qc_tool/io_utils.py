@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Union
 from functools import lru_cache
 
 import numpy as np
@@ -32,8 +32,15 @@ def load_npy(path: Path) -> np.ndarray:
     return np.load(str(path))
 
 
-def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
+def load_dicom_series(path: Path, *, return_files: bool = False) -> Union[np.ndarray, Tuple[np.ndarray, List[Path]]]:  # pragma: no cover - heavy I/O
     """Load a DICOM series from a file or directory.
+
+    Parameters
+    ----------
+    path:
+        Directory containing ``.dcm`` files or one file from the series.
+    return_files:
+        If ``True`` the sorted list of slice file paths is also returned.
 
     Sorting is based on the ``InstanceNumber`` attribute when available to
     preserve slice order. ``RescaleSlope`` and ``RescaleIntercept`` are applied
@@ -55,7 +62,11 @@ def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
 
     datasets: List[pydicom.Dataset] = [pydicom.dcmread(str(f)) for f in files]
     try:
-        datasets.sort(key=lambda d: int(getattr(d, "InstanceNumber", 0)))
+        pairs = sorted(
+            zip(datasets, files),
+            key=lambda t: int(getattr(t[0], "InstanceNumber", 0)),
+        )
+        datasets, files = [list(x) for x in zip(*pairs)]
     except Exception:  # pragma: no cover - best effort sorting
         pass
 
@@ -70,6 +81,8 @@ def load_dicom_series(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
     volume = np.stack(arrays)
     if datasets and datasets[0].get("PhotometricInterpretation") == "MONOCHROME1":
         volume = volume.max() - volume
+    if return_files:
+        return volume, files
     return volume
 
 

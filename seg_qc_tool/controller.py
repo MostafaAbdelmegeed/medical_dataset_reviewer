@@ -31,7 +31,12 @@ class Controller(QtCore.QObject):
         self.settings = self.load_settings()
         self.pairs: List[Pair] = []
         self.current_index = -1
+        self.current_slice = 0
         self.executor = ThreadPoolExecutor(max_workers=2)
+
+    def set_slice_index(self, index: int) -> None:
+        """Record currently displayed slice index."""
+        self.current_slice = index
 
     # Settings -------------------------------------------------
     def load_settings(self) -> Settings:
@@ -93,22 +98,35 @@ class Controller(QtCore.QObject):
 
     # Discard --------------------------------------------------
     def discard_current(self, comment: str = "") -> None:
-        """Move the current segmentation to the discard folder and log it."""
+        """Copy the current segmentation slice or volume to the discard folder."""
         if self.current_index == -1 or not self.settings.discard_dir:
             return
 
-        pair = self.pairs.pop(self.current_index)
-        try:
-            rel = pair.segmentation.relative_to(self.settings.segmentations_dir)
-        except ValueError:
-            rel = pair.segmentation.name
-        target = self.settings.discard_dir / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-
-        # Use shutil.move to cope with cross-device moves
+        pair = self.pairs[self.current_index]
+        seg_path = pair.segmentation
         import shutil
 
-        shutil.move(str(pair.segmentation), str(target))
+        if seg_path.is_dir() or seg_path.suffix.lower() == ".dcm":
+            _, files = load_dicom_series(seg_path, return_files=True)
+            if not files:
+                return
+            idx = max(0, min(self.current_slice, len(files) - 1))
+            src = files[idx]
+            try:
+                rel = src.relative_to(self.settings.segmentations_dir)
+            except ValueError:
+                rel = src.name
+            dest = self.settings.discard_dir / rel
+        else:
+            try:
+                rel = seg_path.relative_to(self.settings.segmentations_dir)
+            except ValueError:
+                rel = seg_path.name
+            dest = self.settings.discard_dir / rel
+            src = seg_path
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(src), str(dest))
 
         with open("discard_log.csv", "a", newline="") as f:
             writer = csv.writer(f)
@@ -120,10 +138,4 @@ class Controller(QtCore.QObject):
                     comment,
                 ]
             )
-
-        if self.pairs:
-            if self.current_index >= len(self.pairs):
-                self.current_index = len(self.pairs) - 1
-            self.pair_changed.emit(self.pairs[self.current_index])
-        else:
-            self.current_index = -1
+        # pair is kept so user can continue reviewing other slices
