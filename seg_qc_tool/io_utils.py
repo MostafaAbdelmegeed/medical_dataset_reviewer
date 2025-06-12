@@ -21,9 +21,18 @@ logger = logging.getLogger(__name__)
 
 
 def load_nifti(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
-    """Load a NIfTI file as a numpy array."""
-    img = nib.load(str(path))
+    """Load a NIfTI file as a numpy array and close the file handle."""
+    img = nib.load(str(path), mmap=False)
     data = img.get_fdata(dtype=np.float32)
+    if data.ndim == 4:
+        data = data[..., 0]
+    if data.ndim == 3:
+        data = np.transpose(data, (2, 0, 1))
+    # Explicitly close any open file handles held by nibabel
+    if hasattr(img, "file_map"):
+        for fh in img.file_map.values():
+            if fh.fileobj:
+                fh.fileobj.close()
     return np.asarray(data)
 
 
@@ -60,26 +69,25 @@ def load_dicom_series(path: Path, *, return_files: bool = False) -> Union[np.nda
     if not files:
         raise FileNotFoundError("No DICOM files found")
 
-    datasets: List[pydicom.Dataset] = [pydicom.dcmread(str(f)) for f in files]
-    try:
-        pairs = sorted(
-            zip(datasets, files),
-            key=lambda t: int(getattr(t[0], "InstanceNumber", 0)),
-        )
-        datasets, files = [list(x) for x in zip(*pairs)]
-    except Exception:  # pragma: no cover - best effort sorting
-        pass
+    slices = []
+    for f in files:
+        with open(f, "rb") as fp:
+            ds = pydicom.dcmread(fp)
+            inst_num = int(getattr(ds, "InstanceNumber", 0))
+            arr = ds.pixel_array.astype(np.float32)
+            slope = float(getattr(ds, "RescaleSlope", 1.0))
+            intercept = float(getattr(ds, "RescaleIntercept", 0.0))
+            arr = arr * slope + intercept
+            photometric = getattr(ds, "PhotometricInterpretation", "")
+        slices.append((inst_num, arr, photometric, f))
 
-    arrays = []
-    for ds in datasets:
-        arr = ds.pixel_array.astype(np.float32)
-        slope = float(getattr(ds, "RescaleSlope", 1.0))
-        intercept = float(getattr(ds, "RescaleIntercept", 0.0))
-        arr = arr * slope + intercept
-        arrays.append(arr)
+    slices.sort(key=lambda t: t[0])
+    arrays = [s[1] for s in slices]
+    files = [s[3] for s in slices]
+    photometric = slices[0][2] if slices else ""
 
     volume = np.stack(arrays)
-    if datasets and datasets[0].get("PhotometricInterpretation") == "MONOCHROME1":
+    if photometric == "MONOCHROME1":
         volume = volume.max() - volume
     if return_files:
         return volume, files

@@ -56,7 +56,12 @@ def pair_finder(original_dir: Path, seg_dir: Path, max_dist: int = 2) -> List[Pa
     segs = _volume_items(seg_dir)
     pairs = []
     used_segs = set()
+    force_pair = len(originals) == 1 and len(segs) == 1
     for orig in originals:
+        if force_pair:
+            pairs.append(Pair(orig, segs[0]))
+            used_segs.add(segs[0])
+            continue
         base_orig = _strip_suffix(orig.stem)
         best = None
         best_dist = max_dist + 1
