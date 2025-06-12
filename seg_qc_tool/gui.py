@@ -88,9 +88,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         QtGui.QShortcut(
             QtGui.QKeySequence(QtCore.Qt.Key_Left), self
-        ).activated.connect(self._dec_slice)
+        ).activated.connect(self.controller.prev_pair)
         QtGui.QShortcut(
             QtGui.QKeySequence(QtCore.Qt.Key_Right), self
+        ).activated.connect(self.controller.next_pair)
+        QtGui.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_Up), self
+        ).activated.connect(self._dec_slice)
+        QtGui.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_Down), self
         ).activated.connect(self._inc_slice)
 
         discard_btn = QtWidgets.QPushButton("Discard")
