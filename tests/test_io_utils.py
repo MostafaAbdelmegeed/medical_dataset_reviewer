@@ -1,6 +1,7 @@
 import numpy as np
 from pathlib import Path
-from seg_qc_tool.io_utils import normalize_volume, load_npy, load_dicom_series
+from seg_qc_tool.io_utils import normalize_volume, load_npy, load_dicom_series, load_nifti
+import nibabel as nib
 import pydicom
 from pydicom.dataset import Dataset, FileMetaDataset, FileDataset
 import pydicom.uid
@@ -61,3 +62,13 @@ def test_load_dicom_series_monochrome1(tmp_path: Path) -> None:
     assert volume.shape[0] == 2
     # Intensity should be inverted
     assert volume.max() == 10
+
+
+def test_load_nifti_transpose(tmp_path: Path) -> None:
+    arr = np.arange(27, dtype=np.float32).reshape(3, 3, 3)
+    img = nib.Nifti1Image(arr, np.eye(4))
+    file = tmp_path / "vol.nii"
+    nib.save(img, str(file))
+    loaded = load_nifti(file)
+    assert loaded.shape == (3, 3, 3)
+    assert np.array_equal(loaded, arr.transpose(2, 0, 1))

@@ -21,10 +21,14 @@ logger = logging.getLogger(__name__)
 
 
 def load_nifti(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
-    """Load a NIfTI file as a numpy array."""
+    """Load a NIfTI file as a numpy array with slices along the first axis."""
     img = nib.load(str(path))
-    data = img.get_fdata(dtype=np.float32)
-    return np.asarray(data)
+    data = np.asarray(img.get_fdata(dtype=np.float32))
+    if data.ndim == 4:
+        data = data[..., 0]
+    if data.ndim == 3:
+        data = np.transpose(data, (2, 0, 1))
+    return data
 
 
 def load_npy(path: Path) -> np.ndarray:
