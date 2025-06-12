@@ -6,7 +6,6 @@ from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from concurrent.futures import Future
-import numpy as np
 
 from .io_utils import load_volume, normalize_volume
 
@@ -24,12 +23,11 @@ class ImageView(QtWidgets.QLabel):
 
     def set_image(self, array) -> None:
         """Set and scale an image from a numpy array."""
-        array = np.ascontiguousarray(array, dtype=np.uint8)
         h, w = array.shape
         img = QtGui.QImage(
-            array.data, w, h, array.strides[0], QtGui.QImage.Format.Format_Grayscale8
+            array.tobytes(), w, h, QtGui.QImage.Format.Format_Grayscale8
         )
-        self._pixmap = QtGui.QPixmap.fromImage(img.copy())
+        self._pixmap = QtGui.QPixmap.fromImage(img)
         self._update_pixmap()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # pragma: no cover - GUI
@@ -51,8 +49,6 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.controller = controller
         self.controller.pair_changed.connect(self.load_pair)
-        self.current_volume = None
-        self.current_seg = None
 
         menubar = self.menuBar()
         file_menu = menubar.addMenu("File")
@@ -87,18 +83,12 @@ class MainWindow(QtWidgets.QMainWindow):
         next_btn.clicked.connect(self.controller.next_pair)
         nav.addWidget(next_btn)
 
-        QtGui.QShortcut(
-            QtGui.QKeySequence(QtCore.Qt.Key_Left), self
-        ).activated.connect(self._dec_slice)
-        QtGui.QShortcut(
-            QtGui.QKeySequence(QtCore.Qt.Key_Right), self
-        ).activated.connect(self._inc_slice)
-        QtGui.QShortcut(
-            QtGui.QKeySequence(QtCore.Qt.Key_Up), self
-        ).activated.connect(self.controller.prev_pair)
-        QtGui.QShortcut(
-            QtGui.QKeySequence(QtCore.Qt.Key_Down), self
-        ).activated.connect(self.controller.next_pair)
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Left), self).activated.connect(
+            self.controller.prev_pair
+        )
+        QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Right), self).activated.connect(
+            self.controller.next_pair
+        )
 
         discard_btn = QtWidgets.QPushButton("Discard")
         discard_btn.setStyleSheet("background-color: red; color: white;")
@@ -113,67 +103,39 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slice_slider.valueChanged.connect(self.change_slice)
 
     def load_pair(self, pair: Pair) -> None:
-        self.current_volume = None
-        self.current_seg = None
-        self.slice_slider.setEnabled(False)
-
-        def loaded() -> None:
-            if self.current_volume is None or self.current_seg is None:
-                return
-            vol = self.current_volume
-            mid = vol.shape[0] // 2 if vol.ndim == 3 else 0
+        volume = self._load_volume(pair.original)
+        seg = self._load_volume(pair.segmentation)
+        if volume.ndim == 3:
+            mid = volume.shape[0] // 2
             self.slice_slider.setMinimum(0)
-            self.slice_slider.setMaximum(vol.shape[0] - 1 if vol.ndim == 3 else 0)
+            self.slice_slider.setMaximum(volume.shape[0] - 1)
             self.slice_slider.setValue(mid)
             self.controller.set_slice_index(mid)
-            self._show_slice(mid)
-            self.slice_slider.setEnabled(True)
-
-        self._load_volume_async(pair.original, "current_volume", loaded)
-        self._load_volume_async(pair.segmentation, "current_seg", loaded)
+            slice_ = volume[mid]
+        else:
+            slice_ = volume
+        self.left_view.set_image((slice_ * 255).astype('uint8'))
+        if seg.ndim == 3:
+            seg_slice = seg[mid]
+        else:
+            seg_slice = seg
+        self.right_view.set_image((seg_slice * 255).astype('uint8'))
 
     def change_slice(self, val: int) -> None:
-        self._show_slice(val)
-
-    def _load_volume_async(self, path: Path, attr: str, callback) -> None:
-        def worker() -> np.ndarray:
-            vol = load_volume(path)
-            norm, _, _ = normalize_volume(vol)
-            return norm
-
-        future: Future = self.controller.executor.submit(worker)
-
-        def done(f: Future) -> None:
-            setattr(self, attr, f.result())
-            # Ensure callback runs in the main thread
-            QtCore.QTimer.singleShot(0, callback)
-
-        future.add_done_callback(done)
-
-    def _show_slice(self, idx: int) -> None:
-        if self.current_volume is None or self.current_seg is None:
+        if self.controller.current_index == -1:
             return
-        self.controller.set_slice_index(idx)
-        vol_slice = (
-            self.current_volume[idx]
-            if self.current_volume.ndim == 3
-            else self.current_volume
-        )
-        seg_slice = (
-            self.current_seg[idx] if self.current_seg.ndim == 3 else self.current_seg
-        )
-        self.left_view.set_image((vol_slice * 255).astype("uint8"))
-        self.right_view.set_image((seg_slice * 255).astype("uint8"))
+        pair = self.controller.pairs[self.controller.current_index]
+        volume = self._load_volume(pair.original)
+        seg = self._load_volume(pair.segmentation)
+        self.controller.set_slice_index(val)
+        self.left_view.set_image((volume[val] * 255).astype('uint8'))
+        self.right_view.set_image((seg[val] * 255).astype('uint8'))
 
-    def _dec_slice(self) -> None:
-        if not self.slice_slider.isEnabled():
-            return
-        self.slice_slider.setValue(max(self.slice_slider.minimum(), self.slice_slider.value() - 1))
-
-    def _inc_slice(self) -> None:
-        if not self.slice_slider.isEnabled():
-            return
-        self.slice_slider.setValue(min(self.slice_slider.maximum(), self.slice_slider.value() + 1))
+    def _load_volume(self, path: Path):
+        future: Future = self.controller.executor.submit(load_volume, path)
+        volume = future.result()
+        norm, _, _ = normalize_volume(volume)
+        return norm
 
     # Actions -------------------------------------------------
     def discard(self) -> None:

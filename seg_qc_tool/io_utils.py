@@ -21,14 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 def load_nifti(path: Path) -> np.ndarray:  # pragma: no cover - heavy I/O
-    """Load a NIfTI file as a numpy array with slices along the first axis."""
+    """Load a NIfTI file as a numpy array."""
     img = nib.load(str(path))
-    data = np.asarray(img.get_fdata(dtype=np.float32))
-    if data.ndim == 4:
-        data = data[..., 0]
-    if data.ndim == 3:
-        data = np.transpose(data, (2, 0, 1))
-    return data
+    data = img.get_fdata(dtype=np.float32)
+    return np.asarray(data)
 
 
 def load_npy(path: Path) -> np.ndarray:
@@ -61,7 +57,6 @@ def load_dicom_series(path: Path, *, return_files: bool = False) -> Union[np.nda
     files = sorted(directory.glob("*.dcm"))
     if not files:
         files = sorted(directory.glob("*.DCM"))
-    logger.debug("load_dicom_series scanning %s -> %d files", directory, len(files))
     if not files:
         raise FileNotFoundError("No DICOM files found")
 

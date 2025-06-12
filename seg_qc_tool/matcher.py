@@ -55,11 +55,6 @@ def pair_finder(original_dir: Path, seg_dir: Path, max_dist: int = 2) -> List[Pa
     originals = _volume_items(original_dir)
     segs = _volume_items(seg_dir)
     pairs = []
-
-    # If there is exactly one volume in each folder, pair them regardless of name
-    if len(originals) == 1 and len(segs) == 1:
-        return [Pair(originals[0], segs[0])]
-
     used_segs = set()
     for orig in originals:
         base_orig = _strip_suffix(orig.stem)
