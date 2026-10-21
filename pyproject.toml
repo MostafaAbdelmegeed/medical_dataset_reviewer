@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "seg_qc_tool"
 version = "0.1.0"
-description = "Segmentation QC tool"
+description = "Desktop quality control for paired medical images and segmentation volumes"
 requires-python = ">=3.9"
-authors = [{name="Your Name", email="you@example.com"}]
+authors = [{name="Mostafa Abdelmegeed", email="mostafa0as3d@gmail.com"}]
 dependencies = [
     "PySide6",
     "nibabel",
@@ -20,3 +20,9 @@ dependencies = [
 
 [project.scripts]
 seg_qc_tool = "seg_qc_tool.main:main"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["seg_qc_tool*"]

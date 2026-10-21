@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import csv
-from seg_qc_tool.controller import Controller, CONFIG_PATH
+from seg_qc_tool.controller import Controller
 
 
 def test_discard_current(tmp_path: Path) -> None:
@@ -15,8 +15,6 @@ def test_discard_current(tmp_path: Path) -> None:
     (orig / "v.npy").write_text("o")
     (seg / "v_seg.npy").write_text("s")
 
-    if CONFIG_PATH.exists():
-        CONFIG_PATH.unlink()
     c = Controller()
     c.set_segmentations_dir(seg)
     c.set_originals_dir(orig)
@@ -58,8 +56,6 @@ def test_discard_current_dicom_slice(tmp_path: Path) -> None:
     _write_dcm(seg_series / "a.dcm", 1, instance=1)
     _write_dcm(seg_series / "b.dcm", 2, instance=2)
 
-    if CONFIG_PATH.exists():
-        CONFIG_PATH.unlink()
     c = Controller()
     c.set_segmentations_dir(seg)
     c.set_originals_dir(orig)
