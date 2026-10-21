@@ -26,9 +26,10 @@ class Controller(QtCore.QObject):
     slice_changed = QtCore.Signal(int)
     overlay_toggled = QtCore.Signal(bool)
 
-    def __init__(self) -> None:
+    def __init__(self, *, persist_settings: bool = True) -> None:
         super().__init__()
-        self.settings = self.load_settings()
+        self.persist_settings = persist_settings
+        self.settings = self.load_settings() if persist_settings else Settings()
         self.pairs: List[Pair] = []
         self.current_index = -1
         self.current_slice = 0
@@ -56,6 +57,8 @@ class Controller(QtCore.QObject):
         return Settings()
 
     def save_settings(self) -> None:
+        if not self.persist_settings:
+            return
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         CONFIG_PATH.write_text(json.dumps(self.settings.__dict__, default=str))
 

@@ -45,7 +45,7 @@ def _volume_items(directory: Path) -> List[Path]:
     for child in entries:
         if child.is_dir():
             items.extend(_volume_items(child))
-        elif child.suffix.lower() in {".nii", ".nii.gz", ".npy"}:
+        elif child.name.lower().endswith((".nii", ".nii.gz", ".npy")):
             items.append(child)
     return items
 
@@ -62,13 +62,13 @@ def pair_finder(original_dir: Path, seg_dir: Path, max_dist: int = 2) -> List[Pa
             pairs.append(Pair(orig, segs[0]))
             used_segs.add(segs[0])
             continue
-        base_orig = _strip_suffix(orig.stem)
+        base_orig = _strip_suffix(orig.name[:-7] if orig.name.lower().endswith(".nii.gz") else orig.stem)
         best = None
         best_dist = max_dist + 1
         for seg in segs:
             if seg in used_segs:
                 continue
-            base_seg = _strip_suffix(seg.stem)
+            base_seg = _strip_suffix(seg.name[:-7] if seg.name.lower().endswith(".nii.gz") else seg.stem)
             dist = distance(base_orig, base_seg)
             if dist < best_dist:
                 best = seg
